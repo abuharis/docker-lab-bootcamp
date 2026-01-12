@@ -15,12 +15,23 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Copy install script to EC2
+        uses: appleboy/scp-action@v0.1.1
+        with:
+            host: ${{ github.event.inputs.ec2_ip }}
+            username: ubuntu
+            key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+            strict_host_key_checking: no
+            source: "scripts/install_docker.sh"
+            target: "/home/ubuntu/install_docker.sh"
+
       - name: SSH and install Docker
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ github.event.inputs.ec2_ip }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          strict_host_key_checking: no
           script: |
             chmod +x /home/ubuntu/scripts/install_docker.sh
             /home/ubuntu/scripts/install_docker.sh
