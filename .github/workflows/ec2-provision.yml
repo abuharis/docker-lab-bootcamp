@@ -49,7 +49,7 @@ jobs:
       - name: Launch EC2 instance
         run: |
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id $AMI_ID \
+            --image-id ${{ secrets.AMI_ID }} \
             --instance-type t3.medium \
             --key-name ${{ secrets.EC2_KEY_NAME }} \
             --subnet-id $SUBNET_ID \
