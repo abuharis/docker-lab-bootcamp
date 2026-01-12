@@ -1,0 +1,36 @@
+name: EC2 Destroy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Find EC2 instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=Docker-Lab" \
+            --query 'Reservations[].Instances[].InstanceId' \
+            --output text)
+
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "No instance found"
+            exit 0
+          fi
+
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
+      - name: Terminate EC2
+        run: |
+          aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+          aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID
+          echo "EC2 instance destroyed"
