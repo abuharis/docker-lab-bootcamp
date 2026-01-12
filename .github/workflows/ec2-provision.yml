@@ -46,18 +46,6 @@ jobs:
 
           echo "SECURITY_GROUP_ID=$SG_ID" >> $GITHUB_ENV
 
-       - name: Get Ubuntu 24.04 LTS AMI
-        run: |
-          AMI_ID=$(aws ec2 describe-images \
-            --owners 099720109477 \
-            --filters \
-              "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*" \
-              "Name=state,Values=available" \
-            --query 'Images | sort_by(@, &CreationDate)[-1].ImageId' \
-            --output text)
-
-          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
-
       - name: Launch EC2 instance
         run: |
           INSTANCE_ID=$(aws ec2 run-instances \
