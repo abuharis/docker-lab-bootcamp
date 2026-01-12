@@ -2,6 +2,10 @@ name: SSH & Install Docker
 
 on:
   workflow_dispatch:
+    inputs:
+      ec2_ip:
+        description: 'Public IP of EC2 instance'
+        required: true
 
 jobs:
   install-docker:
@@ -14,7 +18,7 @@ jobs:
       - name: SSH and install Docker
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ env.EC2_PUBLIC_IP }}   # Use the EC2 IP from deploy pipeline output or manual input
+          host: ${{ github.event.inputs.ec2_ip }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
