@@ -1,0 +1,80 @@
+name: EC2 Deploy (Docker Lab)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Generate public key from private key
+        run: |
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > key
+          chmod 600 key
+          ssh-keygen -y -f key > key.pub
+
+      - name: Import SSH key pair (idempotent)
+        run: |
+          aws ec2 import-key-pair \
+            --key-name ${{ secrets.EC2_KEY_NAME }} \
+            --public-key-material fileb://key.pub \
+          || echo "Key pair already exists"
+
+      - name: Get default subnet
+        run: |
+          SUBNET_ID=$(aws ec2 describe-subnets \
+            --filters "Name=default-for-az,Values=true" \
+            --query 'Subnets[0].SubnetId' \
+            --output text)
+
+          echo "SUBNET_ID=$SUBNET_ID" >> $GITHUB_ENV
+
+      - name: Get default security group
+        run: |
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=default" \
+            --query 'SecurityGroups[0].GroupId' \
+            --output text)
+
+          echo "SECURITY_GROUP_ID=$SG_ID" >> $GITHUB_ENV
+
+      - name: Launch EC2 instance
+        run: |
+          INSTANCE_ID=$(aws ec2 run-instances \
+            --image-id ami-0c7217cdde317cfec \
+            --instance-type t3.medium \
+            --key-name ${{ secrets.EC2_KEY_NAME }} \
+            --subnet-id $SUBNET_ID \
+            --security-group-ids $SECURITY_GROUP_ID \
+            --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=Docker-Lab}]' \
+            --query 'Instances[0].InstanceId' \
+            --output text)
+
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
+      - name: Wait for instance & get public IP
+        run: |
+          aws ec2 wait instance-running --instance-ids $INSTANCE_ID
+
+          PUBLIC_IP=$(aws ec2 describe-instances \
+            --instance-ids $INSTANCE_ID \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+
+          echo "EC2_PUBLIC_IP=$PUBLIC_IP" >> $GITHUB_ENV
+          echo "EC2 Public IP: $PUBLIC_IP"
+
+      - name: Store EC2 IP in GitHub Secrets
+        uses: gliech/create-github-secret-action@v1
+        with:
+          name: EC2_PUBLIC_IP
+          value: ${{ env.EC2_PUBLIC_IP }}
+          pa_token: ${{ secrets.GITHUB_TOKEN }}
