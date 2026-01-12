@@ -46,10 +46,23 @@ jobs:
 
           echo "SECURITY_GROUP_ID=$SG_ID" >> $GITHUB_ENV
 
+       - name: Get Ubuntu 24.04 LTS AMI
+        run: |
+          AMI_ID=$(aws ec2 describe-images \
+            --owners 099720109477 \
+            --filters \
+              "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*" \
+              "Name=state,Values=available" \
+            --query 'Images | sort_by(@, &CreationDate)[-1].ImageId' \
+            --output text)
+
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+          echo "Using AMI: $AMI_ID"
+
       - name: Launch EC2 instance
         run: |
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id ami-0c7217cdde317cfec \
+            --image-id $AMI_ID \
             --instance-type t3.medium \
             --key-name ${{ secrets.EC2_KEY_NAME }} \
             --subnet-id $SUBNET_ID \
