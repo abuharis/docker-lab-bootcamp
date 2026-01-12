@@ -76,4 +76,4 @@ jobs:
         with:
           name: EC2_PUBLIC_IP
           value: ${{ env.EC2_PUBLIC_IP }}
-          pa_token: ${{ secrets.GITHUB_TOKEN }}
+          pa_token: ${{ secrets.PAT_FOR_SECRETS }}
